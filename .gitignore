@@ -1,0 +1,25 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+venv/
+env/
+.venv/
+
+# Database
+db/*.db
+db/*.db-journal
+
+# Environment variables
+.env
+.env.local
+
+# Frontend
+ui/node_modules/
+ui/dist/
+ui/.env
+
+# Temporary
+.pytest_cache/

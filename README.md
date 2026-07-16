@@ -84,7 +84,7 @@ Add the following entry to your `mcpServers` block. Be sure to replace the `cwd`
       "args": [
         "src/server.py"
       ],
-      "cwd": "C:/path/to/rapiber/mcp-kanban",
+      "cwd": "/absolute/path/to/mcp-kanban",
       "env": {}
     }
   }

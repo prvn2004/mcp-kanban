@@ -40,7 +40,6 @@ Navigate to `http://127.0.0.1:8000` in your browser to view the Kanban board.
 | `npm run dev` | Start the Vite development server for the UI with HMR |
 | `npm run build` | Compile the React UI for production |
 | `python -m uvicorn src.api:app --reload` | Run the FastAPI backend with auto-reload |
-| `python src/migrate.py` | Run the migration script to convert legacy `.md` tickets to SQLite |
 
 ## Architecture
 

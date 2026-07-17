@@ -1,4 +1,4 @@
-# Rapiber Ticket Manager (MCP Server & Kanban UI)
+# Ticket Manager (MCP Server & Kanban UI)
 
 Ticket Manager is a robust, local-first Kanban system designed specifically to be controlled by AI Agents via the Model Context Protocol (MCP), while also providing a beautiful React-based Kanban UI for human engineers.
 
@@ -95,4 +95,4 @@ Once mounted, the agent will have access to tools like `list_tickets`, `get_tick
 
 ## Contributing
 
-When modifying the backend, ensure that all database interactions run through the context manager in `src/db.py` to prevent connection leaks.
+When modifying the backend, ensure that all database interactions run through the context manager in `src/db/connection.py` to prevent connection leaks.

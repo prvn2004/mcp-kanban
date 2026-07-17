@@ -4,6 +4,7 @@ class Queries:
     GET_FEATURE = "SELECT * FROM features WHERE id = ? COLLATE NOCASE"
     LIST_FEATURES = "SELECT * FROM features"
     UPDATE_FEATURE = "UPDATE features SET title = ?, summary = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? COLLATE NOCASE"
+    DELETE_FEATURE = "DELETE FROM features WHERE id = ? COLLATE NOCASE"
     
     # Subfeatures
     CREATE_SUBFEATURE = "INSERT INTO subfeatures (id, parent_feature_id, title, summary) VALUES (?, ?, ?, ?)"
@@ -11,6 +12,8 @@ class Queries:
     LIST_SUBFEATURES = "SELECT * FROM subfeatures"
     LIST_SUBFEATURES_BY_PARENT = "SELECT * FROM subfeatures WHERE parent_feature_id = ? COLLATE NOCASE"
     UPDATE_SUBFEATURE = "UPDATE subfeatures SET title = ?, summary = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? COLLATE NOCASE"
+    DELETE_SUBFEATURE = "DELETE FROM subfeatures WHERE id = ? COLLATE NOCASE"
+    DELETE_SUBFEATURES_BY_PARENT = "DELETE FROM subfeatures WHERE parent_feature_id = ? COLLATE NOCASE"
     
     # Tickets
     CREATE_TICKET = """INSERT INTO tickets 
@@ -24,6 +27,11 @@ class Queries:
     UPDATE_TICKET_STATUS = "UPDATE tickets SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? COLLATE NOCASE"
     UPDATE_TICKET_TASKS = "UPDATE tickets SET tasks = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? COLLATE NOCASE"
     UPDATE_TICKET_ASSIGNEE = "UPDATE tickets SET assigned_to = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? COLLATE NOCASE"
+    DELETE_TICKET = "DELETE FROM tickets WHERE id = ? COLLATE NOCASE"
+    DELETE_TICKETS_BY_PARENT = "DELETE FROM tickets WHERE parent_id = ? COLLATE NOCASE"
+    DELETE_TICKETS_BY_FEATURE = """DELETE FROM tickets 
+        WHERE parent_id = ? COLLATE NOCASE 
+           OR parent_id IN (SELECT id FROM subfeatures WHERE parent_feature_id = ? COLLATE NOCASE)"""
     
     # Notes
     GET_TICKET_NOTES = "SELECT created_at, role, content FROM notes WHERE ticket_id = ? COLLATE NOCASE ORDER BY id ASC"
@@ -49,7 +57,11 @@ def build_list_tickets_query(status: str = None, assigned_to: str = None, priori
         query += " AND type = ? COLLATE NOCASE"
         params.append(type)
     if parent_id:
-        query += " AND parent_id = ? COLLATE NOCASE"
+        query += """ AND (
+            parent_id = ? COLLATE NOCASE
+            OR parent_id IN (SELECT id FROM subfeatures WHERE parent_feature_id = ? COLLATE NOCASE)
+        )"""
+        params.append(parent_id)
         params.append(parent_id)
     if search:
         query += " AND (title LIKE ? OR summary LIKE ?)"

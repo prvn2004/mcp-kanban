@@ -121,5 +121,20 @@ def assign_ticket(id: str, assignee: str, role: str) -> Dict[str, Any]:
     """
     return KanbanService.assign_ticket(id, assignee, role)
 
+@mcp.tool()
+def delete_feature(id: str, role: str) -> bool:
+    """Delete a feature by its ID. Requires Manager role."""
+    return KanbanService.delete_feature(id, role)
+
+@mcp.tool()
+def delete_subfeature(id: str, role: str) -> bool:
+    """Delete a subfeature by its ID. Requires Manager role."""
+    return KanbanService.delete_subfeature(id, role)
+
+@mcp.tool()
+def delete_ticket(id: str, role: str) -> bool:
+    """Delete a ticket by its ID. Requires Manager role."""
+    return KanbanService.delete_ticket(id, role)
+
 if __name__ == "__main__":
     mcp.run()

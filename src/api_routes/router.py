@@ -31,6 +31,11 @@ def get_feature(feature_id: str):
 def update_feature(feature_id: str, update: FeatureUpdate):
     return KanbanService.update_feature(feature_id, update.title, update.summary, update.role)
 
+@router.delete("/features/{feature_id}")
+def delete_feature(feature_id: str, role: str):
+    KanbanService.delete_feature(feature_id, role)
+    return {"status": "deleted"}
+
 # --- Subfeatures ---
 
 @router.get("/subfeatures")
@@ -47,6 +52,11 @@ def get_subfeature(subfeature_id: str):
 @router.put("/subfeatures/{subfeature_id}")
 def update_subfeature(subfeature_id: str, update: SubfeatureUpdate):
     return KanbanService.update_subfeature(subfeature_id, update.title, update.summary, update.role)
+
+@router.delete("/subfeatures/{subfeature_id}")
+def delete_subfeature(subfeature_id: str, role: str):
+    KanbanService.delete_subfeature(subfeature_id, role)
+    return {"status": "deleted"}
 
 # --- Tickets ---
 
@@ -77,3 +87,8 @@ def check_task(ticket_id: str, update: TaskCheck):
 def add_note(ticket_id: str, data: NoteData):
     KanbanService.add_ticket_note(ticket_id, data.content, data.role)
     return KanbanService.get_ticket(ticket_id)
+
+@router.delete("/tickets/{ticket_id}")
+def delete_ticket(ticket_id: str, role: str):
+    KanbanService.delete_ticket(ticket_id, role)
+    return {"status": "deleted"}

@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { X, Send, Save, Edit3 } from 'lucide-react';
+import { X, Send, Save, Edit3, Trash2 } from 'lucide-react';
 import type { Ticket } from '../types';
 
 import { TICKET_STATUSES, TICKET_PRIORITIES, TICKET_TYPES } from '../constants';
-import { updateTicketStatus, checkTicketTask, addTicketNote, updateTicket } from '../api';
+import { updateTicketStatus, checkTicketTask, addTicketNote, updateTicket, deleteTicket } from '../api';
 
 export function TicketModal({ ticket, onClose, onUpdate }: { ticket: Ticket, onClose: () => void, onUpdate: () => void }) {
   const [newNote, setNewNote] = useState('');
@@ -16,6 +16,19 @@ export function TicketModal({ ticket, onClose, onUpdate }: { ticket: Ticket, onC
       onUpdate();
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (confirm(`Are you sure you want to delete ticket ${ticket.id}?`)) {
+      try {
+        await deleteTicket(ticket.id);
+        onClose();
+        onUpdate();
+      } catch (e: any) {
+        console.error(e);
+        alert(e.message || 'Failed to delete ticket');
+      }
     }
   };
 
@@ -65,9 +78,14 @@ export function TicketModal({ ticket, onClose, onUpdate }: { ticket: Ticket, onC
           </div>
           <div className="flex items-center gap-2">
             {!isEditing ? (
-              <button onClick={() => setIsEditing(true)} className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors">
-                <Edit3 size={16} /> Edit
-              </button>
+              <>
+                <button onClick={() => setIsEditing(true)} className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors">
+                  <Edit3 size={16} /> Edit
+                </button>
+                <button onClick={handleDelete} className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors" title="Delete Ticket">
+                  <Trash2 size={16} /> Delete
+                </button>
+              </>
             ) : (
               <button onClick={saveEdits} className="flex items-center gap-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg transition-colors shadow-sm">
                 <Save size={16} /> Save

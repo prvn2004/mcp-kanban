@@ -1,6 +1,10 @@
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from mcp.server.fastmcp import FastMCP
 from typing import List, Optional, Dict, Any
-import db
+from src.services.kanban_service import KanbanService
 
 # Initialize FastMCP Server
 mcp = FastMCP("Ticket Manager MCP Server")
@@ -13,17 +17,17 @@ def create_feature(id: str, title: str, summary: str, owner: str, role: str) -> 
     This tool is primarily used when setting up new epics.
     Requires role = 'Manager'.
     """
-    return db.create_feature(id, title, summary, owner, role)
+    return KanbanService.create_feature(id, title, summary, owner, role)
 
 @mcp.tool()
 def get_feature(id: str) -> Optional[Dict[str, Any]]:
     """Retrieve details of a specific feature by its ID."""
-    return db.get_feature(id)
+    return KanbanService.get_feature(id)
 
 @mcp.tool()
 def list_features() -> List[Dict[str, Any]]:
     """List all high-level features/epics available in the system."""
-    return db.list_features()
+    return KanbanService.list_features()
 
 @mcp.tool()
 def create_subfeature(id: str, parent_id: str, title: str, summary: str, role: str) -> Dict[str, Any]:
@@ -31,12 +35,12 @@ def create_subfeature(id: str, parent_id: str, title: str, summary: str, role: s
     Create a new subfeature to break down a large feature into smaller logical blocks.
     Requires role = 'Manager'.
     """
-    return db.create_subfeature(id, parent_id, title, summary, role)
+    return KanbanService.create_subfeature(id, parent_id, title, summary, role)
 
 @mcp.tool()
 def get_subfeature(id: str) -> Optional[Dict[str, Any]]:
     """Retrieve details of a specific subfeature by its ID."""
-    return db.get_subfeature(id)
+    return KanbanService.get_subfeature(id)
 
 @mcp.tool()
 def create_ticket(id: str, parent_id: str, title: str, type: str, priority: str, summary: str, context: str, acceptance_criteria: List[str], role: str) -> Dict[str, Any]:
@@ -48,7 +52,7 @@ def create_ticket(id: str, parent_id: str, title: str, type: str, priority: str,
     priority: P0 (Critical) | P1 (High) | P2 (Medium) | P3 (Low)
     parent_id: ID of the feature or subfeature this ticket belongs to.
     """
-    return db.create_ticket(id, parent_id, title, type, priority, summary, context, acceptance_criteria, role)
+    return KanbanService.create_ticket(id, parent_id, title, type, priority, summary, context, acceptance_criteria, role)
 
 @mcp.tool()
 def get_ticket(id: str) -> Optional[Dict[str, Any]]:
@@ -57,7 +61,7 @@ def get_ticket(id: str) -> Optional[Dict[str, Any]]:
     This returns the ticket's title, summary, status, checklist tasks, and all historical notes/comments.
     Use this when you know the exact ticket ID you want to work on.
     """
-    return db.get_ticket(id)
+    return KanbanService.get_ticket(id)
 
 @mcp.tool()
 def list_tickets(status: str = None, assigned_to: str = None, priority: str = None, type: str = None, parent_id: str = None, search: str = None) -> List[Dict[str, Any]]:
@@ -71,7 +75,7 @@ def list_tickets(status: str = None, assigned_to: str = None, priority: str = No
     parent_id: Filter tickets belonging to a specific feature/subfeature (e.g., 'RAP', 'SEC').
     search: Text search within the ticket title or summary.
     """
-    return db.list_tickets(status, assigned_to, priority, type, parent_id, search)
+    return KanbanService.list_tickets(status, assigned_to, priority, type, parent_id, search)
 
 @mcp.tool()
 def update_ticket_status(id: str, new_status: str, role: str, resolution_note: str = None) -> Dict[str, Any]:
@@ -83,12 +87,12 @@ def update_ticket_status(id: str, new_status: str, role: str, resolution_note: s
     Manager can transition to ANY status.
     If moving to BLOCKED or rejecting from IN_REVIEW, you must provide a resolution_note explaining why.
     """
-    return db.update_ticket_status(id, new_status, role, resolution_note)
+    return KanbanService.update_ticket_status(id, new_status, role, resolution_note)
 
 @mcp.tool()
 def add_ticket_task(id: str, description: str, role: str) -> Dict[str, Any]:
     """Add a sub-task (checklist item) to an existing ticket."""
-    return db.add_ticket_task(id, description, role)
+    return KanbanService.add_ticket_task(id, description, role)
 
 @mcp.tool()
 def check_ticket_task(id: str, task_index: int, role: str) -> Dict[str, Any]:
@@ -98,7 +102,7 @@ def check_ticket_task(id: str, task_index: int, role: str) -> Dict[str, Any]:
     Requires role Developer or Manager.
     All tasks must be checked off before transitioning to IN_REVIEW.
     """
-    return db.check_ticket_task(id, task_index, role)
+    return KanbanService.check_ticket_task(id, task_index, role)
 
 @mcp.tool()
 def add_ticket_note(id: str, content: str, role: str) -> Dict[str, Any]:
@@ -106,17 +110,16 @@ def add_ticket_note(id: str, content: str, role: str) -> Dict[str, Any]:
     Add a comment/note to a ticket's activity log.
     Highly recommended when making discoveries, asking questions, or logging work done.
     """
-    db.add_note(id, content, role)
-    return db.get_ticket(id)
+    return KanbanService.add_ticket_note(id, content, role)
 
 @mcp.tool()
-def assign_ticket(id: str, assigned_to: str, role: str) -> Dict[str, Any]:
+def assign_ticket(id: str, assignee: str, role: str) -> Dict[str, Any]:
     """
     Assign a ticket to someone.
     Developers can only assign READY tickets to themselves.
     Managers can assign to anyone.
     """
-    return db.assign_ticket(id, assigned_to, role)
+    return KanbanService.assign_ticket(id, assignee, role)
 
 if __name__ == "__main__":
     mcp.run()

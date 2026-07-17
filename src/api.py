@@ -1,28 +1,12 @@
-import os
-import time
-import logging
-from collections import defaultdict
 from pathlib import Path
-from typing import Optional, List, Any, Dict
-
-from fastapi import FastAPI, HTTPException, Request, Depends
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
 
-from src import db
-
-# Logging Configuration
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
-logger = logging.getLogger("ticket_api")
-
-# Configuration
-API_KEY = os.getenv("MCP_UI_API_KEY", "dev-secret-key")
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
-SERVER_URL = os.getenv("SERVER_URL", "http://127.0.0.1:8000")
+from src.api_routes.dependencies import FRONTEND_URL, SERVER_URL
+from src.api_routes.middleware import security_middleware
+from src.api_routes.router import router
+from src.core.exceptions import TicketNotFoundError, AuthorizationError, TicketError
 
 app = FastAPI(title="Ticket Manager MCP API")
 
@@ -35,188 +19,35 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Security: Rate Limiting and Security Headers
-RATE_LIMIT_WINDOW = 60 # 1 minute
-RATE_LIMIT_MAX = 100
-ip_requests = defaultdict(list)
+# Attach Security/Rate-Limiting Middleware
+app.middleware("http")(security_middleware)
 
-@app.middleware("http")
-async def security_middleware(request: Request, call_next):
-    # 1. Rate Limiting
-    client_ip = request.client.host if request.client else "unknown"
-    now = time.time()
-    
-    # Clean up old requests
-    ip_requests[client_ip] = [req_time for req_time in ip_requests[client_ip] if now - req_time < RATE_LIMIT_WINDOW]
-    
-    if len(ip_requests[client_ip]) >= RATE_LIMIT_MAX:
-        logger.warning(f"Rate limit exceeded for IP: {client_ip}")
-        return JSONResponse(
-            status_code=429,
-            content={"error": {"code": "RATE_LIMIT_EXCEEDED", "message": "Too many requests. Please try again later."}}
-        )
-        
-    ip_requests[client_ip].append(now)
-
-    # 2. Process Request
-    start_time = time.time()
-    try:
-        response = await call_next(request)
-        process_time = (time.time() - start_time) * 1000
-        logger.info(f"{request.method} {request.url.path} - {response.status_code} - {process_time:.2f}ms")
-    except Exception as e:
-        process_time = (time.time() - start_time) * 1000
-        logger.error(f"{request.method} {request.url.path} - 500 - {process_time:.2f}ms - Error: {str(e)}")
-        raise
-
-    # 3. Security Headers
-    response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["X-Frame-Options"] = "DENY"
-    response.headers["Content-Security-Policy"] = "default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline';"
-    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-
-    return response
-
-# Error Handling Exception Mapper
-@app.exception_handler(db.TicketNotFoundError)
-async def not_found_handler(request: Request, exc: db.TicketNotFoundError):
+# Error Handling Exception Mappers
+@app.exception_handler(TicketNotFoundError)
+async def not_found_handler(request: Request, exc: TicketNotFoundError):
     return JSONResponse(
         status_code=404,
         content={"error": {"code": "NOT_FOUND", "message": str(exc)}}
     )
 
-@app.exception_handler(db.AuthorizationError)
-async def auth_error_handler(request: Request, exc: db.AuthorizationError):
+@app.exception_handler(AuthorizationError)
+async def auth_error_handler(request: Request, exc: AuthorizationError):
     return JSONResponse(
         status_code=403,
         content={"error": {"code": "FORBIDDEN", "message": str(exc)}}
     )
 
-@app.exception_handler(db.InvalidTransitionError)
-@app.exception_handler(db.ValidationError)
-async def validation_error_handler(request: Request, exc: db.TicketError):
+@app.exception_handler(TicketError)
+async def validation_error_handler(request: Request, exc: TicketError):
     return JSONResponse(
         status_code=422,
         content={"error": {"code": "VALIDATION_ERROR", "message": str(exc)}}
     )
 
-# Auth Dependency
-async def verify_api_key(request: Request):
-    """
-    In production, UI calls to the backend should be authenticated. 
-    We expect an Authorization header: 'Bearer <api_key>'.
-    For development ease, if auth fails but it's a UI request (serving JS/CSS), we allow it.
-    But for /api/ routes, we enforce the key.
-    """
-    # NOTE: Since the frontend currently doesn't send this header, we will mock it 
-    # as authorized for local development, but log a warning.
-    # In a fully hardened deployment, uncomment the below constraint.
-    
-    # auth_header = request.headers.get("Authorization")
-    # if not auth_header or auth_header != f"Bearer {API_KEY}":
-    #    raise HTTPException(status_code=401, detail="Unauthorized")
-    pass
-
-# --- Pydantic Models ---
-
-class StatusUpdate(BaseModel):
-    status: str = Field(..., description="The new status to move to")
-    role: str = Field(..., description="Role attempting the transition")
-    note: Optional[str] = Field(None, max_length=1000)
-
-class TaskCheck(BaseModel):
-    task_index: int = Field(..., ge=0)
-    role: str
-
-class NoteData(BaseModel):
-    content: str = Field(..., min_length=1, max_length=5000)
-    role: str
-
-class TicketUpdate(BaseModel):
-    title: str
-    type: str
-    priority: str
-    summary: str
-    context: str
-    role: str
-
-class FeatureUpdate(BaseModel):
-    title: str
-    summary: str
-    role: str
-
-class SubfeatureUpdate(BaseModel):
-    title: str
-    summary: str
-    role: str
-
-# --- Routes ---
-
-@app.get("/api/health")
-def health_check():
-    """Health check endpoint for monitoring."""
-    return {"status": "healthy", "timestamp": time.time()}
-
-@app.get("/api/features", dependencies=[Depends(verify_api_key)])
-def get_features():
-    return db.list_features()
-
-@app.get("/api/features/{feature_id}", dependencies=[Depends(verify_api_key)])
-def get_feature(feature_id: str):
-    feat = db.get_feature(feature_id)
-    if not feat:
-        raise HTTPException(status_code=404, detail="Feature not found")
-    return feat
-
-@app.put("/api/features/{feature_id}", dependencies=[Depends(verify_api_key)])
-def update_feature(feature_id: str, update: FeatureUpdate):
-    return db.update_feature(feature_id, update.title, update.summary, update.role)
-
-@app.get("/api/subfeatures", dependencies=[Depends(verify_api_key)])
-def get_subfeatures(parent_id: Optional[str] = None):
-    return db.list_subfeatures(parent_id)
-
-@app.get("/api/subfeatures/{subfeature_id}", dependencies=[Depends(verify_api_key)])
-def get_subfeature(subfeature_id: str):
-    sub = db.get_subfeature(subfeature_id)
-    if not sub:
-        raise HTTPException(status_code=404, detail="Subfeature not found")
-    return sub
-
-@app.put("/api/subfeatures/{subfeature_id}", dependencies=[Depends(verify_api_key)])
-def update_subfeature(subfeature_id: str, update: SubfeatureUpdate):
-    return db.update_subfeature(subfeature_id, update.title, update.summary, update.role)
-
-@app.get("/api/tickets", dependencies=[Depends(verify_api_key)])
-def get_tickets(
-    status: Optional[str] = None, 
-    assigned_to: Optional[str] = None,
-    priority: Optional[str] = None,
-    type: Optional[str] = None,
-    parent_id: Optional[str] = None,
-    search: Optional[str] = None
-):
-    return db.list_tickets(status, assigned_to, priority, type, parent_id, search)
-
-@app.put("/api/tickets/{ticket_id}", dependencies=[Depends(verify_api_key)])
-def update_ticket(ticket_id: str, update: TicketUpdate):
-    return db.update_ticket(ticket_id, update.title, update.type, update.priority, update.summary, update.context, update.role)
-
-@app.put("/api/tickets/{ticket_id}/status", dependencies=[Depends(verify_api_key)])
-def update_status(ticket_id: str, update: StatusUpdate):
-    return db.update_ticket_status(ticket_id, update.status, update.role, update.note)
-
-@app.put("/api/tickets/{ticket_id}/tasks/check", dependencies=[Depends(verify_api_key)])
-def check_task(ticket_id: str, update: TaskCheck):
-    return db.check_ticket_task(ticket_id, update.task_index, update.role)
-
-@app.post("/api/tickets/{ticket_id}/notes", dependencies=[Depends(verify_api_key)])
-def add_note(ticket_id: str, data: NoteData):
-    db.add_note(ticket_id, data.content, data.role)
-    return db.get_ticket(ticket_id)
+# Include API Router
+app.include_router(router, prefix="/api")
 
 # --- UI Static File Serving ---
-
 ui_path = Path(__file__).parent.parent / "ui" / "dist"
 
 @app.get("/")

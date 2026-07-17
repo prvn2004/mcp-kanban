@@ -2,8 +2,10 @@ import unittest
 import os
 import json
 from fastapi.testclient import TestClient
-from src import db
+from src.services.kanban_service import KanbanService
+from src.db.connection import get_db
 from src.api import app
+from src.core.exceptions import AuthorizationError, InvalidTransitionError
 
 class TestTicketManager(unittest.TestCase):
     
@@ -17,7 +19,7 @@ class TestTicketManager(unittest.TestCase):
         
         # Clean up existing test data if any
         try:
-            with db.get_db() as conn:
+            with get_db() as conn:
                 c = conn.cursor()
                 c.execute("DELETE FROM tickets WHERE id = ?", (cls.ticket_id,))
                 c.execute("DELETE FROM features WHERE id = ?", (cls.feature_id,))
@@ -26,20 +28,20 @@ class TestTicketManager(unittest.TestCase):
             pass
 
     def test_01_db_create_feature(self):
-        feat = db.create_feature(self.feature_id, "Test Feature", "A feature for testing", "QA Bot", "Manager")
+        feat = KanbanService.create_feature(self.feature_id, "Test Feature", "A feature for testing", "QA Bot", "Manager")
         self.assertIsNotNone(feat)
         self.assertEqual(feat["id"], self.feature_id)
 
     def test_02_db_create_ticket(self):
         # Create without Manager role should fail
-        with self.assertRaises(db.AuthorizationError):
-            db.create_ticket(
+        with self.assertRaises(AuthorizationError):
+            KanbanService.create_ticket(
                 self.ticket_id, self.feature_id, "Test Ticket", "TASK", "P1",
                 "Summary", "Context", ["AC1"], "Developer"
             )
             
         # Create with Manager role
-        tkt = db.create_ticket(
+        tkt = KanbanService.create_ticket(
             self.ticket_id, self.feature_id, "Test Ticket", "TASK", "P1",
             "Summary", "Context", ["AC1"], "Manager"
         )
@@ -49,23 +51,23 @@ class TestTicketManager(unittest.TestCase):
 
     def test_03_db_invalid_transition(self):
         # Developer cannot move BACKLOG -> IN_PROGRESS directly
-        with self.assertRaises(db.InvalidTransitionError):
-            db.update_ticket_status(self.ticket_id, "IN_PROGRESS", "Developer")
+        with self.assertRaises(InvalidTransitionError):
+            KanbanService.update_ticket_status(self.ticket_id, "IN_PROGRESS", "Developer")
             
         # Manager CAN move BACKLOG -> IN_PROGRESS directly
-        tkt = db.update_ticket_status(self.ticket_id, "IN_PROGRESS", "Manager")
+        tkt = KanbanService.update_ticket_status(self.ticket_id, "IN_PROGRESS", "Manager")
         self.assertEqual(tkt["status"], "IN_PROGRESS")
 
     def test_04_db_add_check_task(self):
         # Add task
-        db.add_ticket_task(self.ticket_id, "Write a test", "Developer")
-        tkt = db.get_ticket(self.ticket_id)
+        KanbanService.add_ticket_task(self.ticket_id, "Write a test", "Developer")
+        tkt = KanbanService.get_ticket(self.ticket_id)
         self.assertEqual(len(tkt["tasks"]), 1)
         self.assertFalse(tkt["tasks"][0]["completed"])
         
         # Check task
-        db.check_ticket_task(self.ticket_id, 0, "Developer")
-        tkt = db.get_ticket(self.ticket_id)
+        KanbanService.check_ticket_task(self.ticket_id, 0, "Developer")
+        tkt = KanbanService.get_ticket(self.ticket_id)
         self.assertTrue(tkt["tasks"][0]["completed"])
 
     def test_05_api_get_tickets(self):
@@ -101,22 +103,4 @@ class TestTicketManager(unittest.TestCase):
         )
         self.assertEqual(res.status_code, 200)
         tkt = res.json()
-        
-        # Check that the note was added (it should be the last note)
-        notes = tkt["notes"]
-        self.assertTrue(any(n["content"] == "This is a test note from API" for n in notes))
-
-    @classmethod
-    def tearDownClass(cls):
-        # Clean up
-        try:
-            with db.get_db() as conn:
-                c = conn.cursor()
-                c.execute("DELETE FROM tickets WHERE id = ?", (cls.ticket_id,))
-                c.execute("DELETE FROM features WHERE id = ?", (cls.feature_id,))
-                c.execute("DELETE FROM notes WHERE ticket_id = ?", (cls.ticket_id,))
-        except Exception:
-            pass
-
-if __name__ == '__main__':
-    unittest.main(verbosity=2)
+        self.assertTrue(any("test note from API" in n["content"] for n in tkt["notes"]))

@@ -106,6 +106,21 @@ def list_features() -> List[Dict[str, Any]]:
         rows = c.fetchall()
         return [dict(row) for row in rows]
 
+def update_feature(id: str, title: str, summary: str, role: str) -> Dict[str, Any]:
+    if role != 'Manager':
+        raise AuthorizationError("Only Manager can edit features.")
+    feature = get_feature(id)
+    if not feature:
+        raise TicketNotFoundError(f"Feature {id} not found.")
+        
+    with get_db() as conn:
+        c = conn.cursor()
+        c.execute(
+            "UPDATE features SET title = ?, summary = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? COLLATE NOCASE",
+            (title, summary, id)
+        )
+    return get_feature(id)
+
 def create_subfeature(id: str, parent_id: str, title: str, summary: str, role: str) -> Dict[str, Any]:
     if role != 'Manager':
         raise AuthorizationError("Only Manager can create subfeatures.")
@@ -126,6 +141,31 @@ def get_subfeature(id: str) -> Optional[Dict[str, Any]]:
         c.execute("SELECT * FROM subfeatures WHERE id = ? COLLATE NOCASE", (id,))
         row = c.fetchone()
         return dict(row) if row else None
+
+def list_subfeatures(parent_id: str = None) -> List[Dict[str, Any]]:
+    with get_db() as conn:
+        c = conn.cursor()
+        if parent_id:
+            c.execute("SELECT * FROM subfeatures WHERE parent_feature_id = ? COLLATE NOCASE", (parent_id,))
+        else:
+            c.execute("SELECT * FROM subfeatures")
+        rows = c.fetchall()
+        return [dict(row) for row in rows]
+
+def update_subfeature(id: str, title: str, summary: str, role: str) -> Dict[str, Any]:
+    if role != 'Manager':
+        raise AuthorizationError("Only Manager can edit subfeatures.")
+    subfeature = get_subfeature(id)
+    if not subfeature:
+        raise TicketNotFoundError(f"Subfeature {id} not found.")
+        
+    with get_db() as conn:
+        c = conn.cursor()
+        c.execute(
+            "UPDATE subfeatures SET title = ?, summary = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? COLLATE NOCASE",
+            (title, summary, id)
+        )
+    return get_subfeature(id)
 
 def create_ticket(id: str, parent_id: str, title: str, type: str, priority: str, summary: str, context: str, acceptance_criteria: list, role: str) -> Dict[str, Any]:
     if role != 'Manager':
@@ -197,8 +237,34 @@ def list_tickets(status: str = None, assigned_to: str = None, priority: str = No
             t = dict(row)
             t['acceptance_criteria'] = json.loads(t['acceptance_criteria']) if t['acceptance_criteria'] else []
             t['tasks'] = json.loads(t['tasks']) if t['tasks'] else []
+            
+            # Fetch notes for this ticket
+            c.execute("SELECT created_at, role, content FROM notes WHERE ticket_id = ? COLLATE NOCASE ORDER BY id ASC", (t['id'],))
+            t['notes'] = [dict(n) for n in c.fetchall()]
+            
             result.append(t)
         return result
+
+def update_ticket(id: str, title: str, type: str, priority: str, summary: str, context: str, role: str) -> Dict[str, Any]:
+    ticket = get_ticket(id)
+    if not ticket:
+        raise TicketNotFoundError(f"Ticket {id} not found.")
+    
+    # Optional role checking, developers could update tickets they are assigned to, but let's allow Manager
+    if role not in ['Manager', 'Developer']:
+        raise AuthorizationError("Only Manager or Developer can edit tickets.")
+        
+    with get_db() as conn:
+        c = conn.cursor()
+        c.execute(
+            """UPDATE tickets 
+            SET title = ?, type = ?, priority = ?, summary = ?, context = ?, updated_at = CURRENT_TIMESTAMP 
+            WHERE id = ? COLLATE NOCASE""",
+            (title, type, priority, summary, context, id)
+        )
+        
+    add_note(id, "Updated ticket details.", role)
+    return get_ticket(id)
 
 def update_ticket_status(id: str, new_status: str, role: str, resolution_note: str = None) -> Dict[str, Any]:
     ticket = get_ticket(id)

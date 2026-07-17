@@ -132,6 +132,24 @@ class NoteData(BaseModel):
     content: str = Field(..., min_length=1, max_length=5000)
     role: str
 
+class TicketUpdate(BaseModel):
+    title: str
+    type: str
+    priority: str
+    summary: str
+    context: str
+    role: str
+
+class FeatureUpdate(BaseModel):
+    title: str
+    summary: str
+    role: str
+
+class SubfeatureUpdate(BaseModel):
+    title: str
+    summary: str
+    role: str
+
 # --- Routes ---
 
 @app.get("/api/health")
@@ -143,6 +161,32 @@ def health_check():
 def get_features():
     return db.list_features()
 
+@app.get("/api/features/{feature_id}", dependencies=[Depends(verify_api_key)])
+def get_feature(feature_id: str):
+    feat = db.get_feature(feature_id)
+    if not feat:
+        raise HTTPException(status_code=404, detail="Feature not found")
+    return feat
+
+@app.put("/api/features/{feature_id}", dependencies=[Depends(verify_api_key)])
+def update_feature(feature_id: str, update: FeatureUpdate):
+    return db.update_feature(feature_id, update.title, update.summary, update.role)
+
+@app.get("/api/subfeatures", dependencies=[Depends(verify_api_key)])
+def get_subfeatures(parent_id: Optional[str] = None):
+    return db.list_subfeatures(parent_id)
+
+@app.get("/api/subfeatures/{subfeature_id}", dependencies=[Depends(verify_api_key)])
+def get_subfeature(subfeature_id: str):
+    sub = db.get_subfeature(subfeature_id)
+    if not sub:
+        raise HTTPException(status_code=404, detail="Subfeature not found")
+    return sub
+
+@app.put("/api/subfeatures/{subfeature_id}", dependencies=[Depends(verify_api_key)])
+def update_subfeature(subfeature_id: str, update: SubfeatureUpdate):
+    return db.update_subfeature(subfeature_id, update.title, update.summary, update.role)
+
 @app.get("/api/tickets", dependencies=[Depends(verify_api_key)])
 def get_tickets(
     status: Optional[str] = None, 
@@ -153,6 +197,10 @@ def get_tickets(
     search: Optional[str] = None
 ):
     return db.list_tickets(status, assigned_to, priority, type, parent_id, search)
+
+@app.put("/api/tickets/{ticket_id}", dependencies=[Depends(verify_api_key)])
+def update_ticket(ticket_id: str, update: TicketUpdate):
+    return db.update_ticket(ticket_id, update.title, update.type, update.priority, update.summary, update.context, update.role)
 
 @app.put("/api/tickets/{ticket_id}/status", dependencies=[Depends(verify_api_key)])
 def update_status(ticket_id: str, update: StatusUpdate):

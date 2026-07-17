@@ -246,3 +246,39 @@ class KanbanService:
             
         KanbanService._add_note(id, f"Ticket assigned to {assignee}.", role)
         return KanbanService.get_ticket(id)
+
+    @staticmethod
+    def delete_feature(id: str, role: str) -> bool:
+        verify_manager_role(role)
+        if not KanbanService.get_feature(id):
+            raise TicketNotFoundError(f"Feature {id} not found.")
+            
+        with get_db() as conn:
+            c = conn.cursor()
+            c.execute(Queries.DELETE_TICKETS_BY_FEATURE, (id, id))
+            c.execute(Queries.DELETE_SUBFEATURES_BY_PARENT, (id,))
+            c.execute(Queries.DELETE_FEATURE, (id,))
+        return True
+
+    @staticmethod
+    def delete_subfeature(id: str, role: str) -> bool:
+        verify_manager_role(role)
+        if not KanbanService.get_subfeature(id):
+            raise TicketNotFoundError(f"Subfeature {id} not found.")
+            
+        with get_db() as conn:
+            c = conn.cursor()
+            c.execute(Queries.DELETE_TICKETS_BY_PARENT, (id,))
+            c.execute(Queries.DELETE_SUBFEATURE, (id,))
+        return True
+
+    @staticmethod
+    def delete_ticket(id: str, role: str) -> bool:
+        verify_manager_role(role)
+        if not KanbanService.get_ticket(id):
+            raise TicketNotFoundError(f"Ticket {id} not found.")
+            
+        with get_db() as conn:
+            c = conn.cursor()
+            c.execute(Queries.DELETE_TICKET, (id,))
+        return True

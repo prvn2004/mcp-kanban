@@ -1,12 +1,24 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { Feature } from '../types';
-import { Target } from 'lucide-react';
-import { getFeatures } from '../api';
+import { Target, Trash2 } from 'lucide-react';
+import { getFeatures, deleteFeature } from '../api';
 
 export function Features() {
   const [features, setFeatures] = useState<Feature[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const handleDelete = async (e: React.MouseEvent, id: string) => {
+    e.preventDefault();
+    if (confirm(`Are you sure you want to delete feature ${id}?`)) {
+      try {
+        await deleteFeature(id);
+        setFeatures(features.filter(f => f.id !== id));
+      } catch (err: any) {
+        alert(err.message || 'Failed to delete feature');
+      }
+    }
+  };
 
   useEffect(() => {
     const fetchFeatures = async () => {
@@ -41,7 +53,8 @@ export function Features() {
         <div className="grid grid-cols-12 gap-4 p-4 border-b border-slate-100 bg-slate-50 text-xs font-semibold text-slate-500 uppercase tracking-wider">
           <div className="col-span-2">Key</div>
           <div className="col-span-3">Summary</div>
-          <div className="col-span-7">Description</div>
+          <div className="col-span-6">Description</div>
+          <div className="col-span-1 text-right">Actions</div>
         </div>
         <div className="flex flex-col">
           {features.map(feature => (
@@ -52,7 +65,16 @@ export function Features() {
             >
               <div className="col-span-2 text-xs font-bold text-slate-400 group-hover:text-blue-500 uppercase">{feature.id}</div>
               <div className="col-span-3 text-sm font-semibold text-slate-700 group-hover:text-blue-600 truncate pr-4">{feature.title}</div>
-              <div className="col-span-7 text-sm text-slate-500 truncate pr-4">{feature.summary}</div>
+              <div className="col-span-6 text-sm text-slate-500 truncate pr-4">{feature.summary}</div>
+              <div className="col-span-1 flex justify-end">
+                <button 
+                  onClick={(e) => handleDelete(e, feature.id)}
+                  className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
+                  title="Delete Feature"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
             </Link>
           ))}
           {features.length === 0 && (

@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useParams, useSearchParams, Link, useNavigate } from 'react-router-dom';
 import type { Feature, Subfeature } from '../types';
-import { Target, Layers, Edit3, Save, ArrowLeft, ChevronRight, ChevronDown } from 'lucide-react';
+import { Target, Layers, Edit3, Save, ArrowLeft, ChevronRight, ChevronDown, Trash2 } from 'lucide-react';
 import { KanbanBoard } from '../components/KanbanBoard';
-import { getFeatures, getSubfeatures, updateFeature } from '../api';
+import { getFeatures, getSubfeatures, updateFeature, deleteSubfeature, deleteFeature } from '../api';
 
 export function FeatureView() {
   const { id } = useParams<{ id: string }>(); // The current feature ID
@@ -92,6 +92,40 @@ export function FeatureView() {
     }
   };
 
+  const handleMainBoardClick = (featureId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (featureId !== id) {
+      navigate(`/features/${featureId}`);
+    } else {
+      setSearchParams({});
+    }
+  };
+
+  const handleDeleteSubfeature = async (subId: string) => {
+    if (confirm(`Are you sure you want to delete subfeature ${subId}?`)) {
+      try {
+        await deleteSubfeature(subId);
+        setSearchParams({}); // Navigate away from the deleted subfeature
+        fetchData();
+      } catch (err: any) {
+        alert(err.message || 'Failed to delete subfeature');
+      }
+    }
+  };
+
+  const handleDeleteFeature = async (e: React.MouseEvent, featureId: string) => {
+    e.stopPropagation();
+    if (confirm(`Are you sure you want to delete feature ${featureId}?`)) {
+      try {
+        await deleteFeature(featureId);
+        if (id === featureId) navigate('/');
+        else fetchData();
+      } catch (err: any) {
+        alert(err.message || 'Failed to delete feature');
+      }
+    }
+  };
+
   if (loading) return <div className="p-8 text-center text-slate-500 font-medium">Loading Workspace...</div>;
 
   const currentFeature = allFeatures.find(f => f.id === id);
@@ -123,15 +157,24 @@ export function FeatureView() {
                   {/* Feature Node (Folder) */}
                   <div 
                     onClick={() => setExpandedFeatures(prev => ({ ...prev, [feat.id]: !prev[feat.id] }))}
-                    className={`flex items-center gap-1.5 p-2 rounded-lg cursor-pointer transition-colors group hover:bg-slate-50`}
+                    className={`flex items-center justify-between gap-1.5 p-2 rounded-lg cursor-pointer transition-colors group hover:bg-slate-50`}
                   >
-                    <button className="p-0.5 text-slate-400 hover:text-slate-600 rounded">
-                      {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                    <div className="flex items-center gap-1.5 overflow-hidden">
+                      <button className="p-0.5 text-slate-400 hover:text-slate-600 rounded shrink-0">
+                        {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                      </button>
+                      <Target size={14} className={isExpanded ? 'text-blue-500 shrink-0' : 'text-slate-400 shrink-0'} />
+                      <span className={`text-xs font-semibold truncate ${isExpanded ? 'text-slate-900' : 'text-slate-700'}`}>
+                        {feat.id}: {feat.title}
+                      </span>
+                    </div>
+                    <button 
+                      onClick={(e) => handleDeleteFeature(e, feat.id)}
+                      className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-all shrink-0"
+                      title="Delete Feature"
+                    >
+                      <Trash2 size={12} />
                     </button>
-                    <Target size={14} className={isExpanded ? 'text-blue-500' : 'text-slate-400'} />
-                    <span className={`text-xs font-semibold truncate ${isExpanded ? 'text-slate-900' : 'text-slate-700'}`}>
-                      {feat.id}: {feat.title}
-                    </span>
                   </div>
                   
                   {/* Subfeature Nodes & Main Board Leaf */}
@@ -139,11 +182,7 @@ export function FeatureView() {
                     <div className="flex flex-col gap-0.5 ml-6 mt-1 border-l border-slate-100 pl-2">
                       {/* Main Board Leaf Node */}
                       <div 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/features/${feat.id}`);
-                          setSearchParams({});
-                        }}
+                        onClick={(e) => handleMainBoardClick(feat.id, e)}
                         className={`flex items-center gap-2 p-1.5 rounded-lg cursor-pointer transition-colors group ${
                           isCurrentFeat && !activeSubfeatureId ? 'bg-blue-50/70' : 'hover:bg-slate-50'
                         }`}
@@ -161,14 +200,26 @@ export function FeatureView() {
                           <div 
                             key={sub.id}
                             onClick={(e) => handleSubfeatureClick(feat.id, sub.id, e)}
-                            className={`flex items-center gap-2 p-1.5 rounded-lg cursor-pointer transition-colors group ${
+                            className={`flex items-center justify-between gap-2 p-1.5 rounded-lg cursor-pointer transition-colors group ${
                               isCurrentSub ? 'bg-indigo-50/50' : 'hover:bg-slate-50'
                             }`}
                           >
-                            <Layers size={12} className={isCurrentSub ? 'text-indigo-500' : 'text-slate-300 group-hover:text-slate-400'} />
-                            <span className={`text-[11px] truncate font-medium ${isCurrentSub ? 'text-indigo-700' : 'text-slate-600'}`}>
-                              {sub.title}
-                            </span>
+                            <div className="flex items-center gap-2 overflow-hidden">
+                              <Layers size={12} className={isCurrentSub ? 'text-indigo-500 shrink-0' : 'text-slate-300 group-hover:text-slate-400 shrink-0'} />
+                              <span className={`text-[11px] truncate font-medium ${isCurrentSub ? 'text-indigo-700' : 'text-slate-600'}`}>
+                                {sub.title}
+                              </span>
+                            </div>
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteSubfeature(sub.id);
+                              }}
+                              className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-all shrink-0"
+                              title="Delete Subfeature"
+                            >
+                              <Trash2 size={12} />
+                            </button>
                           </div>
                         );
                       })}
@@ -241,6 +292,13 @@ export function FeatureView() {
                     <span className="text-xs font-bold text-slate-700">{activeSubfeature.title}</span>
                   </div>
                 </div>
+                <button 
+                  onClick={() => handleDeleteSubfeature(activeSubfeature.id)}
+                  className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-400 hover:text-red-500 hover:bg-red-50 px-2 py-1 rounded transition-colors"
+                  title="Delete Subfeature"
+                >
+                  <Trash2 size={12} /> Delete
+                </button>
               </div>
               <div className="flex-1 pt-12 overflow-hidden">
                 <KanbanBoard parentId={activeSubfeatureId} />

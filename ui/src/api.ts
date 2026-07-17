@@ -25,6 +25,10 @@ export async function updateFeature(id: string, title: string, summary: string):
   });
 }
 
+export async function deleteFeature(id: string): Promise<void> {
+  return apiFetch<void>(`/api/features/${id}?role=${USER_ROLES.MANAGER}`, { method: 'DELETE' });
+}
+
 // -- Subfeatures --
 
 export async function getSubfeatures(): Promise<Subfeature[]> {
@@ -41,6 +45,10 @@ export async function updateSubfeature(id: string, title: string, summary: strin
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ title, summary, role: USER_ROLES.MANAGER }),
   });
+}
+
+export async function deleteSubfeature(id: string): Promise<void> {
+  return apiFetch<void>(`/api/subfeatures/${id}?role=${USER_ROLES.MANAGER}`, { method: 'DELETE' });
 }
 
 // -- Tickets --
@@ -87,4 +95,8 @@ export async function addTicketNote(ticketId: string, content: string): Promise<
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ content, role: USER_ROLES.MANAGER }),
   });
+}
+
+export async function deleteTicket(ticketId: string): Promise<void> {
+  return apiFetch<void>(`/api/tickets/${ticketId}?role=${USER_ROLES.MANAGER}`, { method: 'DELETE' });
 }

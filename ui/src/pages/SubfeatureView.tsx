@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import type { Subfeature } from '../types';
 import { Layers, ArrowLeft, Edit3, Save } from 'lucide-react';
 import { KanbanBoard } from '../components/KanbanBoard';
+import { getSubfeature, updateSubfeature } from '../api';
 
 export function SubfeatureView() {
   const { id } = useParams<{ id: string }>();
@@ -12,9 +13,9 @@ export function SubfeatureView() {
   const [editedSubfeature, setEditedSubfeature] = useState<Subfeature | null>(null);
 
   const fetchSubfeature = async () => {
+    if (!id) return;
     try {
-      const res = await fetch(`/api/subfeatures/${id}`);
-      const data = await res.json();
+      const data = await getSubfeature(id);
       setSubfeature(data);
       setEditedSubfeature(data);
     } catch (e) {
@@ -29,23 +30,11 @@ export function SubfeatureView() {
   }, [id]);
 
   const saveEdits = async () => {
-    if (!editedSubfeature) return;
+    if (!editedSubfeature || !id) return;
     try {
-      const res = await fetch(`/api/subfeatures/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: editedSubfeature.title,
-          summary: editedSubfeature.summary,
-          role: 'Manager'
-        })
-      });
-      if (res.ok) {
-        setIsEditing(false);
-        fetchSubfeature();
-      } else {
-        alert((await res.json()).detail || 'Failed to update subfeature');
-      }
+      await updateSubfeature(id, editedSubfeature.title, editedSubfeature.summary);
+      setIsEditing(false);
+      fetchSubfeature();
     } catch (e) {
       console.error(e);
     }

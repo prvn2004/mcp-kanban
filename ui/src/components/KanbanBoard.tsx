@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { CheckSquare, MessageSquare } from 'lucide-react';
 import type { Ticket } from '../types';
 import { TicketModal } from './TicketModal';
-
-const COLUMNS = ['BACKLOG', 'READY', 'IN_PROGRESS', 'IN_REVIEW', 'DONE', 'BLOCKED', 'CANCELLED'];
+import { TICKET_STATUSES } from '../constants';
+import { getTickets } from '../api';
 
 export function KanbanBoard({ parentId }: { parentId?: string }) {
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -12,9 +12,7 @@ export function KanbanBoard({ parentId }: { parentId?: string }) {
 
   const fetchTickets = async () => {
     try {
-      const url = parentId ? `/api/tickets?parent_id=${parentId}` : '/api/tickets';
-      const res = await fetch(url);
-      const data = await res.json();
+      const data = await getTickets(parentId);
       setTickets(data);
       if (selectedTicket) {
         const updated = data.find((t: Ticket) => t.id === selectedTicket.id);
@@ -36,7 +34,7 @@ export function KanbanBoard({ parentId }: { parentId?: string }) {
   return (
     <div className="flex-1 overflow-x-auto p-6 h-full flex flex-col">
       <div className="flex gap-4 items-start min-w-max flex-1">
-        {COLUMNS.map(col => (
+        {TICKET_STATUSES.map(col => (
           <div key={col} className="bg-slate-50 rounded-xl w-72 flex flex-col border border-slate-200 max-h-full">
             <div className="p-3 bg-slate-100 rounded-t-xl border-b border-slate-200 sticky top-0 z-10">
               <div className="flex items-center justify-between">

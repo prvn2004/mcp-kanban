@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { Feature } from '../types';
 import { Target } from 'lucide-react';
+import { getFeatures } from '../api';
 
 export function Features() {
   const [features, setFeatures] = useState<Feature[]>([]);
@@ -10,8 +11,7 @@ export function Features() {
   useEffect(() => {
     const fetchFeatures = async () => {
       try {
-        const res = await fetch('/api/features');
-        const data = await res.json();
+        const data = await getFeatures();
         if (Array.isArray(data)) {
           const sorted = data.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
           setFeatures(sorted);

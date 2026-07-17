@@ -3,6 +3,7 @@ import { useParams, useSearchParams, Link, useNavigate } from 'react-router-dom'
 import type { Feature, Subfeature } from '../types';
 import { Target, Layers, Edit3, Save, ArrowLeft, ChevronRight, ChevronDown } from 'lucide-react';
 import { KanbanBoard } from '../components/KanbanBoard';
+import { getFeatures, getSubfeatures, updateFeature } from '../api';
 
 export function FeatureView() {
   const { id } = useParams<{ id: string }>(); // The current feature ID
@@ -20,12 +21,10 @@ export function FeatureView() {
 
   const fetchData = async () => {
     try {
-      const [featRes, subRes] = await Promise.all([
-        fetch(`/api/features`),
-        fetch(`/api/subfeatures`)
+      const [featData, subData] = await Promise.all([
+        getFeatures(),
+        getSubfeatures()
       ]);
-      const featData = featRes.ok ? await featRes.json() : [];
-      const subData = subRes.ok ? await subRes.json() : [];
       
       const featArray = Array.isArray(featData) ? featData : [];
       featArray.sort((a: Feature, b: Feature) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
@@ -75,23 +74,12 @@ export function FeatureView() {
   const saveEdits = async () => {
     if (!editedFeature || !id) return;
     try {
-      const res = await fetch(`/api/features/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: editedFeature.title,
-          summary: editedFeature.summary,
-          role: 'Manager'
-        })
-      });
-      if (res.ok) {
-        setIsEditingFeature(false);
-        fetchData();
-      } else {
-        alert((await res.json()).detail || 'Failed to update feature');
-      }
+      await updateFeature(id, editedFeature.title, editedFeature.summary);
+      setIsEditingFeature(false);
+      fetchData();
     } catch (e) {
       console.error(e);
+      alert((e as Error).message || 'Failed to update feature');
     }
   };
 

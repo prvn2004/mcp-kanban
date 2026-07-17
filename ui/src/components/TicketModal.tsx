@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { X, Send, Save, Edit3 } from 'lucide-react';
 import type { Ticket } from '../types';
 
-const COLUMNS = ['BACKLOG', 'READY', 'IN_PROGRESS', 'IN_REVIEW', 'DONE', 'BLOCKED', 'CANCELLED'];
+import { TICKET_STATUSES, TICKET_PRIORITIES, TICKET_TYPES } from '../constants';
+import { updateTicketStatus, checkTicketTask, addTicketNote, updateTicket } from '../api';
 
 export function TicketModal({ ticket, onClose, onUpdate }: { ticket: Ticket, onClose: () => void, onUpdate: () => void }) {
   const [newNote, setNewNote] = useState('');
@@ -11,13 +12,8 @@ export function TicketModal({ ticket, onClose, onUpdate }: { ticket: Ticket, onC
 
   const moveTicket = async (newStatus: string) => {
     try {
-      const res = await fetch(`/api/tickets/${ticket.id}/status`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus, role: 'Manager' })
-      });
-      if (res.ok) onUpdate();
-      else alert((await res.json()).detail || 'Failed to move ticket');
+      await updateTicketStatus(ticket.id, newStatus);
+      onUpdate();
     } catch (e) {
       console.error(e);
     }
@@ -25,13 +21,8 @@ export function TicketModal({ ticket, onClose, onUpdate }: { ticket: Ticket, onC
 
   const checkTask = async (index: number) => {
     try {
-      const res = await fetch(`/api/tickets/${ticket.id}/tasks/check`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ task_index: index, role: 'Developer' })
-      });
-      if (res.ok) onUpdate();
-      else alert((await res.json()).detail || 'Failed to update task');
+      await checkTicketTask(ticket.id, index);
+      onUpdate();
     } catch (e) {
       console.error(e);
     }
@@ -40,17 +31,9 @@ export function TicketModal({ ticket, onClose, onUpdate }: { ticket: Ticket, onC
   const addNote = async () => {
     if (!newNote.trim()) return;
     try {
-      const res = await fetch(`/api/tickets/${ticket.id}/notes`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: newNote, role: 'Manager' })
-      });
-      if (res.ok) {
-        setNewNote('');
-        onUpdate();
-      } else {
-        alert((await res.json()).detail || 'Failed to add note');
-      }
+      await addTicketNote(ticket.id, newNote);
+      setNewNote('');
+      onUpdate();
     } catch (e) {
       console.error(e);
     }
@@ -58,24 +41,15 @@ export function TicketModal({ ticket, onClose, onUpdate }: { ticket: Ticket, onC
 
   const saveEdits = async () => {
     try {
-      const res = await fetch(`/api/tickets/${ticket.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: editedTicket.title,
-          type: editedTicket.type,
-          priority: editedTicket.priority,
-          summary: editedTicket.summary,
-          context: editedTicket.context,
-          role: 'Manager'
-        })
+      await updateTicket(ticket.id, {
+        title: editedTicket.title,
+        type: editedTicket.type,
+        priority: editedTicket.priority,
+        summary: editedTicket.summary,
+        context: editedTicket.context,
       });
-      if (res.ok) {
-        setIsEditing(false);
-        onUpdate();
-      } else {
-        alert((await res.json()).detail || 'Failed to update ticket');
-      }
+      setIsEditing(false);
+      onUpdate();
     } catch (e) {
       console.error(e);
     }
@@ -239,7 +213,7 @@ export function TicketModal({ ticket, onClose, onUpdate }: { ticket: Ticket, onC
                   value={ticket.status}
                   onChange={(e) => moveTicket(e.target.value)}
                 >
-                  {COLUMNS.map(c => <option key={c} value={c}>{c}</option>)}
+                  {TICKET_STATUSES.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
               <div>
@@ -254,9 +228,7 @@ export function TicketModal({ ticket, onClose, onUpdate }: { ticket: Ticket, onC
                     value={editedTicket.priority}
                     onChange={(e) => setEditedTicket({...editedTicket, priority: e.target.value})}
                   >
-                    <option value="P0">P0</option>
-                    <option value="P1">P1</option>
-                    <option value="P2">P2</option>
+                    {TICKET_PRIORITIES.map(p => <option key={p} value={p}>{p}</option>)}
                   </select>
                 ) : (
                   <div className="text-sm font-semibold text-slate-800 bg-white border border-slate-200 rounded-lg p-2">{ticket.priority}</div>
@@ -270,9 +242,7 @@ export function TicketModal({ ticket, onClose, onUpdate }: { ticket: Ticket, onC
                     value={editedTicket.type}
                     onChange={(e) => setEditedTicket({...editedTicket, type: e.target.value})}
                   >
-                    <option value="BUG">BUG</option>
-                    <option value="FEATURE">FEATURE</option>
-                    <option value="TASK">TASK</option>
+                    {TICKET_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
               )}

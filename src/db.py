@@ -5,6 +5,7 @@ from datetime import datetime
 import os
 from contextlib import contextmanager
 from typing import List, Optional, Dict, Any
+from .constants import TicketStatus, UserRole
 
 DB_PATH = Path(__file__).parent.parent / 'db' / 'tickets.db'
 SCHEMA_PATH = Path(__file__).parent.parent / 'db' / 'schema.sql'
@@ -53,25 +54,25 @@ def get_db():
 # Helper functions for Role enforcement
 def validate_transition(current_status: str, new_status: str, role: str) -> bool:
     valid_transitions = {
-        'BACKLOG': {'READY'},
-        'READY': {'IN_PROGRESS'},
-        'IN_PROGRESS': {'IN_REVIEW', 'BLOCKED'},
-        'IN_REVIEW': {'DONE', 'IN_PROGRESS'},
-        'BLOCKED': {'IN_PROGRESS', 'READY'}
+        TicketStatus.BACKLOG: {TicketStatus.READY},
+        TicketStatus.READY: {TicketStatus.IN_PROGRESS},
+        TicketStatus.IN_PROGRESS: {TicketStatus.IN_REVIEW, TicketStatus.BLOCKED},
+        TicketStatus.IN_REVIEW: {TicketStatus.DONE, TicketStatus.IN_PROGRESS},
+        TicketStatus.BLOCKED: {TicketStatus.IN_PROGRESS, TicketStatus.READY}
     }
     
-    if role == 'Manager':
+    if role == UserRole.MANAGER:
         return True
         
-    if new_status in ['CANCELLED', 'DONE']:
-        if role == 'Reviewer' and current_status == 'IN_REVIEW' and new_status == 'DONE':
+    if new_status in [TicketStatus.CANCELLED, TicketStatus.DONE]:
+        if role == UserRole.REVIEWER and current_status == TicketStatus.IN_REVIEW and new_status == TicketStatus.DONE:
             return True
         return False
         
     if current_status in valid_transitions and new_status in valid_transitions[current_status]:
-        if role == 'Developer' and new_status in ['IN_PROGRESS', 'IN_REVIEW', 'BLOCKED']:
+        if role == UserRole.DEVELOPER and new_status in [TicketStatus.IN_PROGRESS, TicketStatus.IN_REVIEW, TicketStatus.BLOCKED]:
             return True
-        if role == 'Reviewer' and new_status in ['DONE', 'IN_PROGRESS']:
+        if role == UserRole.REVIEWER and new_status in [TicketStatus.DONE, TicketStatus.IN_PROGRESS]:
             return True
             
     return False
@@ -79,7 +80,7 @@ def validate_transition(current_status: str, new_status: str, role: str) -> bool
 # Database CRUD Operations
 
 def create_feature(id: str, title: str, summary: str, owner: str, role: str) -> Dict[str, Any]:
-    if role != 'Manager':
+    if role != UserRole.MANAGER:
         raise AuthorizationError("Only Manager can create features.")
     if not title.strip() or not summary.strip():
         raise ValidationError("Title and summary cannot be empty.")
@@ -107,7 +108,7 @@ def list_features() -> List[Dict[str, Any]]:
         return [dict(row) for row in rows]
 
 def update_feature(id: str, title: str, summary: str, role: str) -> Dict[str, Any]:
-    if role != 'Manager':
+    if role != UserRole.MANAGER:
         raise AuthorizationError("Only Manager can edit features.")
     feature = get_feature(id)
     if not feature:
@@ -122,7 +123,7 @@ def update_feature(id: str, title: str, summary: str, role: str) -> Dict[str, An
     return get_feature(id)
 
 def create_subfeature(id: str, parent_id: str, title: str, summary: str, role: str) -> Dict[str, Any]:
-    if role != 'Manager':
+    if role != UserRole.MANAGER:
         raise AuthorizationError("Only Manager can create subfeatures.")
     if not title.strip() or not summary.strip():
         raise ValidationError("Title and summary cannot be empty.")
@@ -153,7 +154,7 @@ def list_subfeatures(parent_id: str = None) -> List[Dict[str, Any]]:
         return [dict(row) for row in rows]
 
 def update_subfeature(id: str, title: str, summary: str, role: str) -> Dict[str, Any]:
-    if role != 'Manager':
+    if role != UserRole.MANAGER:
         raise AuthorizationError("Only Manager can edit subfeatures.")
     subfeature = get_subfeature(id)
     if not subfeature:
@@ -168,7 +169,7 @@ def update_subfeature(id: str, title: str, summary: str, role: str) -> Dict[str,
     return get_subfeature(id)
 
 def create_ticket(id: str, parent_id: str, title: str, type: str, priority: str, summary: str, context: str, acceptance_criteria: list, role: str) -> Dict[str, Any]:
-    if role != 'Manager':
+    if role != UserRole.MANAGER:
         raise AuthorizationError("Only Manager can create tickets.")
     if not title.strip():
         raise ValidationError("Ticket title cannot be empty.")
@@ -251,7 +252,7 @@ def update_ticket(id: str, title: str, type: str, priority: str, summary: str, c
         raise TicketNotFoundError(f"Ticket {id} not found.")
     
     # Optional role checking, developers could update tickets they are assigned to, but let's allow Manager
-    if role not in ['Manager', 'Developer']:
+    if role not in [UserRole.MANAGER, UserRole.DEVELOPER]:
         raise AuthorizationError("Only Manager or Developer can edit tickets.")
         
     with get_db() as conn:
@@ -279,7 +280,7 @@ def update_ticket_status(id: str, new_status: str, role: str, resolution_note: s
         raise InvalidTransitionError(f"Invalid transition from {current_status} to {new_status} for role {role}.")
         
     # IN_REVIEW validation
-    if new_status == 'IN_REVIEW':
+    if new_status == TicketStatus.IN_REVIEW:
         tasks = ticket['tasks']
         for task in tasks:
             if not task.get('completed', False):
@@ -301,7 +302,7 @@ def add_ticket_task(id: str, description: str, role: str) -> Dict[str, Any]:
     if not ticket:
         raise TicketNotFoundError(f"Ticket {id} not found.")
         
-    if role not in ['Manager', 'Developer']:
+    if role not in [UserRole.MANAGER, UserRole.DEVELOPER]:
         raise AuthorizationError("Only Manager or Developer can add tasks.")
         
     tasks = ticket['tasks']
@@ -319,7 +320,7 @@ def check_ticket_task(id: str, task_index: int, role: str) -> Dict[str, Any]:
     if not ticket:
         raise TicketNotFoundError(f"Ticket {id} not found.")
         
-    if role not in ['Manager', 'Developer']:
+    if role not in [UserRole.MANAGER, UserRole.DEVELOPER]:
         raise AuthorizationError("Only Manager or Developer can check tasks.")
         
     tasks = ticket['tasks']
@@ -352,10 +353,10 @@ def assign_ticket(id: str, assigned_to: str, role: str) -> Dict[str, Any]:
     if not ticket:
         raise TicketNotFoundError(f"Ticket {id} not found.")
         
-    if role == 'Developer':
-        if ticket['status'] != 'READY':
+    if role == UserRole.DEVELOPER:
+        if ticket['status'] != TicketStatus.READY:
             raise ValidationError("Developers can only assign READY tickets to themselves.")
-    elif role != 'Manager':
+    elif role != UserRole.MANAGER:
         raise AuthorizationError(f"Role {role} cannot assign tickets.")
         
     with get_db() as conn:

@@ -26,7 +26,7 @@ class TestTicketManager(unittest.TestCase):
             pass
 
     def test_01_db_create_feature(self):
-        feat = db.create_feature(self.feature_id, "Test Feature", "A feature for testing", "QA Bot")
+        feat = db.create_feature(self.feature_id, "Test Feature", "A feature for testing", "QA Bot", "Manager")
         self.assertIsNotNone(feat)
         self.assertEqual(feat["id"], self.feature_id)
 

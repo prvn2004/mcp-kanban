@@ -6,13 +6,14 @@ import db
 mcp = FastMCP("Ticket Manager MCP Server")
 
 @mcp.tool()
-def create_feature(id: str, title: str, summary: str, owner: str) -> Dict[str, Any]:
+def create_feature(id: str, title: str, summary: str, owner: str, role: str) -> Dict[str, Any]:
     """
     Create a new parent feature. 
     A feature represents a large grouping of work (e.g. RAP, SEC).
     This tool is primarily used when setting up new epics.
+    Requires role = 'Manager'.
     """
-    return db.create_feature(id, title, summary, owner)
+    return db.create_feature(id, title, summary, owner, role)
 
 @mcp.tool()
 def get_feature(id: str) -> Optional[Dict[str, Any]]:
@@ -25,9 +26,12 @@ def list_features() -> List[Dict[str, Any]]:
     return db.list_features()
 
 @mcp.tool()
-def create_subfeature(id: str, parent_id: str, title: str, summary: str) -> Dict[str, Any]:
-    """Create a new subfeature to break down a large feature into smaller logical blocks."""
-    return db.create_subfeature(id, parent_id, title, summary)
+def create_subfeature(id: str, parent_id: str, title: str, summary: str, role: str) -> Dict[str, Any]:
+    """
+    Create a new subfeature to break down a large feature into smaller logical blocks.
+    Requires role = 'Manager'.
+    """
+    return db.create_subfeature(id, parent_id, title, summary, role)
 
 @mcp.tool()
 def get_subfeature(id: str) -> Optional[Dict[str, Any]]:
@@ -60,7 +64,7 @@ def list_tickets(status: str = None, assigned_to: str = None, priority: str = No
     """
     Search and filter tickets in the system. Use this to find tickets to work on.
     All parameters are optional filters. Use minimal filters for broader results.
-    status: Filter by status ('BACKLOG', 'READY', 'IN_PROGRESS', 'IN_REVIEW', 'DONE', 'BLOCKED', 'CANCELLED').
+    status: Filter by status ('BACKLOG', 'READY', 'IN_PROGRESS', 'IN_REVIEW', 'DONE', 'BLOCKED', 'CANCELLED') or use 'ACTIVE' to get all unresolved tickets.
     assigned_to: Filter by the assignee's name (e.g., 'QA-Bot').
     priority: Filter by severity/priority (e.g., 'P0', 'P1', 'P2', 'P3').
     type: Filter by ticket type (e.g., 'BUG', 'TASK').

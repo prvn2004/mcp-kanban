@@ -78,7 +78,12 @@ def validate_transition(current_status: str, new_status: str, role: str) -> bool
 
 # Database CRUD Operations
 
-def create_feature(id: str, title: str, summary: str, owner: str) -> Dict[str, Any]:
+def create_feature(id: str, title: str, summary: str, owner: str, role: str) -> Dict[str, Any]:
+    if role != 'Manager':
+        raise AuthorizationError("Only Manager can create features.")
+    if not title.strip() or not summary.strip():
+        raise ValidationError("Title and summary cannot be empty.")
+        
     with get_db() as conn:
         c = conn.cursor()
         c.execute(
@@ -90,7 +95,7 @@ def create_feature(id: str, title: str, summary: str, owner: str) -> Dict[str, A
 def get_feature(id: str) -> Optional[Dict[str, Any]]:
     with get_db() as conn:
         c = conn.cursor()
-        c.execute("SELECT * FROM features WHERE id = ?", (id,))
+        c.execute("SELECT * FROM features WHERE id = ? COLLATE NOCASE", (id,))
         row = c.fetchone()
         return dict(row) if row else None
 
@@ -101,7 +106,12 @@ def list_features() -> List[Dict[str, Any]]:
         rows = c.fetchall()
         return [dict(row) for row in rows]
 
-def create_subfeature(id: str, parent_id: str, title: str, summary: str) -> Dict[str, Any]:
+def create_subfeature(id: str, parent_id: str, title: str, summary: str, role: str) -> Dict[str, Any]:
+    if role != 'Manager':
+        raise AuthorizationError("Only Manager can create subfeatures.")
+    if not title.strip() or not summary.strip():
+        raise ValidationError("Title and summary cannot be empty.")
+        
     with get_db() as conn:
         c = conn.cursor()
         c.execute(
@@ -113,13 +123,15 @@ def create_subfeature(id: str, parent_id: str, title: str, summary: str) -> Dict
 def get_subfeature(id: str) -> Optional[Dict[str, Any]]:
     with get_db() as conn:
         c = conn.cursor()
-        c.execute("SELECT * FROM subfeatures WHERE id = ?", (id,))
+        c.execute("SELECT * FROM subfeatures WHERE id = ? COLLATE NOCASE", (id,))
         row = c.fetchone()
         return dict(row) if row else None
 
 def create_ticket(id: str, parent_id: str, title: str, type: str, priority: str, summary: str, context: str, acceptance_criteria: list, role: str) -> Dict[str, Any]:
     if role != 'Manager':
         raise AuthorizationError("Only Manager can create tickets.")
+    if not title.strip():
+        raise ValidationError("Ticket title cannot be empty.")
         
     with get_db() as conn:
         c = conn.cursor()
@@ -136,7 +148,7 @@ def create_ticket(id: str, parent_id: str, title: str, type: str, priority: str,
 def get_ticket(id: str) -> Optional[Dict[str, Any]]:
     with get_db() as conn:
         c = conn.cursor()
-        c.execute("SELECT * FROM tickets WHERE id = ?", (id,))
+        c.execute("SELECT * FROM tickets WHERE id = ? COLLATE NOCASE", (id,))
         row = c.fetchone()
         if not row:
             return None
@@ -145,7 +157,7 @@ def get_ticket(id: str) -> Optional[Dict[str, Any]]:
         ticket['acceptance_criteria'] = json.loads(ticket['acceptance_criteria']) if ticket['acceptance_criteria'] else []
         ticket['tasks'] = json.loads(ticket['tasks']) if ticket['tasks'] else []
         
-        c.execute("SELECT created_at, role, content FROM notes WHERE ticket_id = ? ORDER BY id ASC", (id,))
+        c.execute("SELECT created_at, role, content FROM notes WHERE ticket_id = ? COLLATE NOCASE ORDER BY id ASC", (id,))
         ticket['notes'] = [dict(n) for n in c.fetchall()]
         return ticket
 
@@ -155,19 +167,22 @@ def list_tickets(status: str = None, assigned_to: str = None, priority: str = No
         query = "SELECT * FROM tickets WHERE 1=1"
         params = []
         if status:
-            query += " AND status = ?"
-            params.append(status)
+            if status.upper() == 'ACTIVE':
+                query += " AND status NOT IN ('DONE', 'CANCELLED')"
+            else:
+                query += " AND status = ? COLLATE NOCASE"
+                params.append(status)
         if assigned_to:
-            query += " AND assigned_to = ?"
+            query += " AND assigned_to = ? COLLATE NOCASE"
             params.append(assigned_to)
         if priority:
-            query += " AND priority = ?"
+            query += " AND priority = ? COLLATE NOCASE"
             params.append(priority)
         if type:
-            query += " AND type = ?"
+            query += " AND type = ? COLLATE NOCASE"
             params.append(type)
         if parent_id:
-            query += " AND parent_id = ?"
+            query += " AND parent_id = ? COLLATE NOCASE"
             params.append(parent_id)
         if search:
             query += " AND (title LIKE ? OR summary LIKE ?)"
@@ -206,7 +221,7 @@ def update_ticket_status(id: str, new_status: str, role: str, resolution_note: s
                 
     with get_db() as conn:
         c = conn.cursor()
-        c.execute("UPDATE tickets SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", (new_status, id))
+        c.execute("UPDATE tickets SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? COLLATE NOCASE", (new_status.upper(), id))
         
     note = f"Status changed from {current_status} to {new_status}."
     if resolution_note:
@@ -228,7 +243,7 @@ def add_ticket_task(id: str, description: str, role: str) -> Dict[str, Any]:
     
     with get_db() as conn:
         c = conn.cursor()
-        c.execute("UPDATE tickets SET tasks = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", (json.dumps(tasks), id))
+        c.execute("UPDATE tickets SET tasks = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? COLLATE NOCASE", (json.dumps(tasks), id))
         
     add_note(id, f"Added task: {description}", role)
     return get_ticket(id)
@@ -249,7 +264,7 @@ def check_ticket_task(id: str, task_index: int, role: str) -> Dict[str, Any]:
     
     with get_db() as conn:
         c = conn.cursor()
-        c.execute("UPDATE tickets SET tasks = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", (json.dumps(tasks), id))
+        c.execute("UPDATE tickets SET tasks = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? COLLATE NOCASE", (json.dumps(tasks), id))
         
     add_note(id, f"Completed task: {tasks[task_index]['description']}", role)
     return get_ticket(id)
@@ -257,7 +272,7 @@ def check_ticket_task(id: str, task_index: int, role: str) -> Dict[str, Any]:
 def add_note(ticket_id: str, content: str, role: str):
     with get_db() as conn:
         c = conn.cursor()
-        c.execute("SELECT id FROM tickets WHERE id = ?", (ticket_id,))
+        c.execute("SELECT id FROM tickets WHERE id = ? COLLATE NOCASE", (ticket_id,))
         if not c.fetchone():
             raise TicketNotFoundError(f"Ticket {ticket_id} not found.")
             
@@ -279,7 +294,7 @@ def assign_ticket(id: str, assigned_to: str, role: str) -> Dict[str, Any]:
         
     with get_db() as conn:
         c = conn.cursor()
-        c.execute("UPDATE tickets SET assigned_to = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", (assigned_to, id))
+        c.execute("UPDATE tickets SET assigned_to = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? COLLATE NOCASE", (assigned_to, id))
         
     add_note(id, f"Ticket assigned to {assigned_to}.", role)
     return get_ticket(id)

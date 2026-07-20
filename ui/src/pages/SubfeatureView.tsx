@@ -44,53 +44,55 @@ export function SubfeatureView() {
   if (!subfeature) return <div className="p-8 text-center text-red-500">Subfeature not found</div>;
 
   return (
-    <div className="flex flex-col h-full bg-[#f8fafc]">
-      <div className="bg-white border-b border-slate-200 px-6 py-4 shadow-sm">
-        <div className="max-w-[1400px] mx-auto w-full">
-          <Link to={`/features/${subfeature.parent_feature_id}`} className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-indigo-600 transition-colors mb-3">
-            <ArrowLeft size={14} /> Back to Feature {subfeature.parent_feature_id}
+    <div className="flex flex-col h-full bg-[#fafafa]">
+      <div className="bg-white border-b border-slate-200 px-5 py-4 shrink-0">
+        <div className="max-w-6xl mx-auto w-full">
+          <Link to={`/features/${subfeature.parent_feature_id}`} className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 hover:text-blue-600 transition-colors mb-2">
+            <ArrowLeft size={12} /> Back to Feature {subfeature.parent_feature_id}
           </Link>
           
           <div className="flex justify-between items-start">
-            <div className="flex items-center gap-3">
-              <div className="bg-indigo-600 p-2 rounded-lg text-white shadow-sm">
-                <Layers size={18} />
+            <div className="flex-1 max-w-4xl">
+              <div className="flex items-center gap-2 mb-1.5">
+                <Layers size={12} className="text-slate-500" />
+                <span className="text-[10px] font-mono text-slate-500 tracking-wider uppercase border border-slate-200 px-1 py-0.5 rounded-sm">{subfeature.id}</span>
               </div>
-              <div>
-                <span className="text-[10px] font-bold text-slate-400 tracking-wider uppercase block">{subfeature.id}</span>
-                {isEditing ? (
+              
+              {isEditing ? (
+                <div className="space-y-2 mt-1">
                   <input 
                     type="text" 
                     value={editedSubfeature?.title || ''}
                     onChange={e => setEditedSubfeature(prev => prev ? {...prev, title: e.target.value} : null)}
-                    className="w-full text-lg font-semibold text-slate-900 border-b-2 border-indigo-500 focus:outline-none bg-transparent"
+                    className="w-full text-lg font-semibold text-slate-900 border border-slate-300 rounded-sm px-2 py-1 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white"
                   />
-                ) : (
-                  <h1 className="text-lg font-semibold text-slate-900 tracking-tight">{subfeature.title}</h1>
-                )}
-              </div>
+                  <textarea 
+                    value={editedSubfeature?.summary || ''}
+                    onChange={e => setEditedSubfeature(prev => prev ? {...prev, summary: e.target.value} : null)}
+                    className="w-full text-slate-700 text-xs p-2 border border-slate-300 rounded-sm focus:outline-none focus:ring-1 focus:border-blue-500 focus:ring-blue-500 min-h-[60px]"
+                  />
+                  <div className="flex justify-start gap-2">
+                    <button onClick={saveEdits} className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 px-3 py-1 rounded-md transition-colors shadow-sm">
+                      <Save size={12} /> Save
+                    </button>
+                    <button onClick={() => setIsEditing(false)} className="text-xs font-medium text-slate-500 hover:text-slate-700 px-3 py-1 rounded-md">Cancel</button>
+                  </div>
+                </div>
+              ) : (
+                <div className="group relative pr-16">
+                  <h1 className="text-lg font-semibold text-slate-900 leading-tight mb-1">{subfeature.title}</h1>
+                  <p className="text-slate-600 text-xs leading-relaxed max-w-3xl">{subfeature.summary}</p>
+                  
+                  <button 
+                    onClick={() => setIsEditing(true)} 
+                    className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-blue-600 transition-all bg-white border border-slate-200 px-2 py-0.5 rounded-sm shadow-sm"
+                  >
+                    <Edit3 size={11} /> Edit
+                  </button>
+                </div>
+              )}
             </div>
-
-            {!isEditing ? (
-              <button onClick={() => setIsEditing(true)} className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 px-3 py-1.5 rounded-lg transition-colors">
-                <Edit3 size={14} /> Edit
-              </button>
-            ) : (
-              <button onClick={saveEdits} className="flex items-center gap-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 px-3 py-1.5 rounded-lg transition-colors shadow-sm">
-                <Save size={14} /> Save
-              </button>
-            )}
           </div>
-          
-          {isEditing ? (
-            <textarea 
-              value={editedSubfeature?.summary || ''}
-              onChange={e => setEditedSubfeature(prev => prev ? {...prev, summary: e.target.value} : null)}
-              className="mt-4 w-full max-w-4xl text-slate-700 text-sm p-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 min-h-[80px]"
-            />
-          ) : (
-            <p className="mt-3 text-slate-600 text-sm whitespace-pre-wrap leading-relaxed max-w-4xl">{subfeature.summary}</p>
-          )}
         </div>
       </div>
 

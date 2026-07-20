@@ -13,8 +13,20 @@ export type Ticket = {
   notes: any[];
 };
 
+export type Project = {
+  id: string;
+  title: string;
+  summary: string;
+  documentation: string;
+  status: string;
+  owner: string;
+  created_at: string;
+  updated_at: string;
+};
+
 export type Feature = {
   id: string;
+  project_id: string;
   title: string;
   summary: string;
   owner: string;

@@ -4,8 +4,13 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from src.services.kanban_service import KanbanService
 from src.api_routes.models import (
-    FeatureUpdate, SubfeatureUpdate, TicketUpdate, StatusUpdate, TaskCheck, NoteData
+    FeatureUpdate, SubfeatureUpdate, TicketUpdate, StatusUpdate, TaskCheck, NoteData,
+    ProjectUpdate, ProjectDocsUpdate, ProjectCreate
 )
+
+# NOTE: This API relies on client-supplied roles in the JSON body for authorization.
+# This is an explicit design choice for this locally-run MCP server, where the 
+# calling agent/client is trusted.
 
 router = APIRouter()
 
@@ -14,11 +19,43 @@ def health_check():
     """Health check endpoint for monitoring."""
     return {"status": "healthy", "timestamp": time.time()}
 
+# --- Projects ---
+
+@router.get("/projects")
+def get_projects():
+    return KanbanService.list_projects()
+
+@router.post("/projects")
+def create_project(project: ProjectCreate):
+    return KanbanService.create_project(
+        project.id, 
+        project.title, 
+        project.summary, 
+        project.documentation, 
+        "user", # owner
+        project.role
+    )
+
+@router.get("/projects/{project_id}")
+def get_project(project_id: str):
+    proj = KanbanService.get_project(project_id)
+    if not proj:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return proj
+
+@router.put("/projects/{project_id}")
+def update_project(project_id: str, update: ProjectUpdate):
+    return KanbanService.update_project(project_id, update.title, update.summary, update.role)
+
+@router.put("/projects/{project_id}/docs")
+def update_project_docs(project_id: str, update: ProjectDocsUpdate):
+    return KanbanService.update_project_docs(project_id, update.documentation, update.role)
+
 # --- Features ---
 
 @router.get("/features")
-def get_features():
-    return KanbanService.list_features()
+def get_features(project_id: Optional[str] = None):
+    return KanbanService.list_features(project_id)
 
 @router.get("/features/{feature_id}")
 def get_feature(feature_id: str):

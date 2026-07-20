@@ -1,8 +1,17 @@
 class Queries:
+    # Projects
+    CREATE_PROJECT = "INSERT INTO projects (id, title, summary, documentation, owner) VALUES (?, ?, ?, ?, ?)"
+    GET_PROJECT = "SELECT * FROM projects WHERE id = ? COLLATE NOCASE"
+    LIST_PROJECTS = "SELECT id, title, summary, status, owner, created_at, updated_at FROM projects"
+    UPDATE_PROJECT_DOCS = "UPDATE projects SET documentation = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? COLLATE NOCASE"
+    UPDATE_PROJECT = "UPDATE projects SET title = ?, summary = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? COLLATE NOCASE"
+    DELETE_PROJECT = "DELETE FROM projects WHERE id = ? COLLATE NOCASE"
+    
     # Features
-    CREATE_FEATURE = "INSERT INTO features (id, title, summary, owner) VALUES (?, ?, ?, ?)"
+    CREATE_FEATURE = "INSERT INTO features (id, project_id, title, summary, owner) VALUES (?, ?, ?, ?, ?)"
     GET_FEATURE = "SELECT * FROM features WHERE id = ? COLLATE NOCASE"
     LIST_FEATURES = "SELECT * FROM features"
+    LIST_FEATURES_BY_PROJECT = "SELECT * FROM features WHERE project_id = ? COLLATE NOCASE"
     UPDATE_FEATURE = "UPDATE features SET title = ?, summary = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? COLLATE NOCASE"
     DELETE_FEATURE = "DELETE FROM features WHERE id = ? COLLATE NOCASE"
     

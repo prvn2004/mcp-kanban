@@ -14,6 +14,7 @@ class TestTicketManager(unittest.TestCase):
         cls.client = TestClient(app)
         
         # Test Data
+        cls.project_id = "TEST-PROJ-001"
         cls.feature_id = "TEST-FEAT-001"
         cls.ticket_id = "TEST-TKT-001"
         
@@ -23,14 +24,21 @@ class TestTicketManager(unittest.TestCase):
                 c = conn.cursor()
                 c.execute("DELETE FROM tickets WHERE id = ?", (cls.ticket_id,))
                 c.execute("DELETE FROM features WHERE id = ?", (cls.feature_id,))
+                c.execute("DELETE FROM projects WHERE id = ?", (cls.project_id,))
                 c.execute("DELETE FROM notes WHERE ticket_id = ?", (cls.ticket_id,))
         except Exception:
             pass
 
+    def test_00_db_create_project(self):
+        proj = KanbanService.create_project(self.project_id, "Test Project", "A project for testing", "Docs here", "QA Bot", "Manager")
+        self.assertIsNotNone(proj)
+        self.assertEqual(proj["id"], self.project_id)
+
     def test_01_db_create_feature(self):
-        feat = KanbanService.create_feature(self.feature_id, "Test Feature", "A feature for testing", "QA Bot", "Manager")
+        feat = KanbanService.create_feature(self.feature_id, self.project_id, "Test Feature", "A feature for testing", "QA Bot", "Manager")
         self.assertIsNotNone(feat)
         self.assertEqual(feat["id"], self.feature_id)
+        self.assertEqual(feat["project_id"], self.project_id)
 
     def test_02_db_create_ticket(self):
         # Create without Manager role should fail

@@ -10,14 +10,42 @@ from src.services.kanban_service import KanbanService
 mcp = FastMCP("Ticket Manager MCP Server")
 
 @mcp.tool()
-def create_feature(id: str, title: str, summary: str, owner: str, role: str) -> Dict[str, Any]:
+def create_project(id: str, title: str, summary: str, documentation: str, owner: str, role: str) -> Dict[str, Any]:
     """
-    Create a new parent feature. 
+    Create a new project.
+    A project is the highest-level container that groups features together.
+    Requires role = 'Manager'.
+    """
+    return KanbanService.create_project(id, title, summary, documentation, owner, role)
+
+@mcp.tool()
+def get_project(id: str) -> Optional[Dict[str, Any]]:
+    """Retrieve details of a specific project by its ID, including documentation."""
+    return KanbanService.get_project(id)
+
+@mcp.tool()
+def list_projects() -> List[Dict[str, Any]]:
+    """List all projects available in the system."""
+    return KanbanService.list_projects()
+
+@mcp.tool()
+def update_project_docs(id: str, documentation: str, role: str) -> Dict[str, Any]:
+    """
+    Update the documentation file contents of a project.
+    This is where all high-level information and context about the project is stored.
+    Requires role = 'Manager'.
+    """
+    return KanbanService.update_project_docs(id, documentation, role)
+
+@mcp.tool()
+def create_feature(id: str, project_id: str, title: str, summary: str, owner: str, role: str) -> Dict[str, Any]:
+    """
+    Create a new parent feature inside a project. 
     A feature represents a large grouping of work (e.g. RAP, SEC).
     This tool is primarily used when setting up new epics.
     Requires role = 'Manager'.
     """
-    return KanbanService.create_feature(id, title, summary, owner, role)
+    return KanbanService.create_feature(id, project_id, title, summary, owner, role)
 
 @mcp.tool()
 def get_feature(id: str) -> Optional[Dict[str, Any]]:
@@ -25,9 +53,9 @@ def get_feature(id: str) -> Optional[Dict[str, Any]]:
     return KanbanService.get_feature(id)
 
 @mcp.tool()
-def list_features() -> List[Dict[str, Any]]:
-    """List all high-level features/epics available in the system."""
-    return KanbanService.list_features()
+def list_features(project_id: str = None) -> List[Dict[str, Any]]:
+    """List features/epics available in the system. Optionally filter by project_id."""
+    return KanbanService.list_features(project_id)
 
 @mcp.tool()
 def create_subfeature(id: str, parent_id: str, title: str, summary: str, role: str) -> Dict[str, Any]:

@@ -9,6 +9,54 @@ from src.constants import TicketStatus, UserRole
 class KanbanService:
 
     @staticmethod
+    def get_project(id: str) -> Optional[Dict[str, Any]]:
+        with get_db() as conn:
+            c = conn.cursor()
+            c.execute(Queries.GET_PROJECT, (id,))
+            row = c.fetchone()
+            return dict(row) if row else None
+
+    @staticmethod
+    def list_projects() -> List[Dict[str, Any]]:
+        with get_db() as conn:
+            c = conn.cursor()
+            c.execute(Queries.LIST_PROJECTS)
+            return [dict(row) for row in c.fetchall()]
+
+    @staticmethod
+    def create_project(id: str, title: str, summary: str, documentation: str, owner: str, role: str) -> Dict[str, Any]:
+        verify_manager_role(role)
+        if not title.strip():
+            raise ValidationError("Title cannot be empty.")
+            
+        with get_db() as conn:
+            c = conn.cursor()
+            c.execute(Queries.CREATE_PROJECT, (id, title, summary, documentation, owner))
+        return KanbanService.get_project(id)
+
+    @staticmethod
+    def update_project(id: str, title: str, summary: str, role: str) -> Dict[str, Any]:
+        verify_manager_role(role)
+        if not KanbanService.get_project(id):
+            raise TicketNotFoundError(f"Project {id} not found.")
+            
+        with get_db() as conn:
+            c = conn.cursor()
+            c.execute(Queries.UPDATE_PROJECT, (title, summary, id))
+        return KanbanService.get_project(id)
+
+    @staticmethod
+    def update_project_docs(id: str, documentation: str, role: str) -> Dict[str, Any]:
+        verify_manager_role(role)
+        if not KanbanService.get_project(id):
+            raise TicketNotFoundError(f"Project {id} not found.")
+            
+        with get_db() as conn:
+            c = conn.cursor()
+            c.execute(Queries.UPDATE_PROJECT_DOCS, (documentation, id))
+        return KanbanService.get_project(id)
+
+    @staticmethod
     def get_feature(id: str) -> Optional[Dict[str, Any]]:
         with get_db() as conn:
             c = conn.cursor()
@@ -17,21 +65,24 @@ class KanbanService:
             return dict(row) if row else None
 
     @staticmethod
-    def list_features() -> List[Dict[str, Any]]:
+    def list_features(project_id: str = None) -> List[Dict[str, Any]]:
         with get_db() as conn:
             c = conn.cursor()
-            c.execute(Queries.LIST_FEATURES)
+            if project_id:
+                c.execute(Queries.LIST_FEATURES_BY_PROJECT, (project_id,))
+            else:
+                c.execute(Queries.LIST_FEATURES)
             return [dict(row) for row in c.fetchall()]
 
     @staticmethod
-    def create_feature(id: str, title: str, summary: str, owner: str, role: str) -> Dict[str, Any]:
+    def create_feature(id: str, project_id: str, title: str, summary: str, owner: str, role: str) -> Dict[str, Any]:
         verify_manager_role(role)
         if not title.strip() or not summary.strip():
             raise ValidationError("Title and summary cannot be empty.")
             
         with get_db() as conn:
             c = conn.cursor()
-            c.execute(Queries.CREATE_FEATURE, (id, title, summary, owner))
+            c.execute(Queries.CREATE_FEATURE, (id, project_id, title, summary, owner))
         return KanbanService.get_feature(id)
 
     @staticmethod

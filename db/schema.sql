@@ -1,11 +1,24 @@
+CREATE TABLE IF NOT EXISTS projects (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    summary TEXT,
+    documentation TEXT,
+    status TEXT NOT NULL DEFAULT 'ACTIVE',
+    owner TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS features (
     id TEXT PRIMARY KEY,
     title TEXT NOT NULL,
     summary TEXT,
     status TEXT NOT NULL DEFAULT 'ACTIVE',
     owner TEXT,
+    project_id TEXT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (project_id) REFERENCES projects(id)
 );
 
 CREATE TABLE IF NOT EXISTS subfeatures (

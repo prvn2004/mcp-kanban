@@ -22,6 +22,22 @@ class TicketUpdate(BaseModel):
     context: str
     role: str
 
+class ProjectCreate(BaseModel):
+    id: str
+    title: str
+    summary: str
+    documentation: str = ""
+    role: str
+
+class ProjectUpdate(BaseModel):
+    title: str
+    summary: str
+    role: str
+
+class ProjectDocsUpdate(BaseModel):
+    documentation: str
+    role: str
+
 class FeatureUpdate(BaseModel):
     title: str
     summary: str

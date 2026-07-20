@@ -1,5 +1,5 @@
 import { USER_ROLES } from './constants';
-import type { Feature, Subfeature, Ticket } from './types';
+import type { Project, Feature, Subfeature, Ticket } from './types';
 
 // Generic fetch wrapper to handle errors
 async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
@@ -11,10 +11,45 @@ async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
   return res.json();
 }
 
+// -- Projects --
+
+export async function getProjects(): Promise<Project[]> {
+  return apiFetch<Project[]>('/api/projects');
+}
+
+export async function getProject(id: string): Promise<Project> {
+  return apiFetch<Project>(`/api/projects/${id}`);
+}
+
+export async function createProject(id: string, title: string, summary: string): Promise<Project> {
+  return apiFetch<Project>('/api/projects', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id, title, summary, documentation: '', role: USER_ROLES.MANAGER }),
+  });
+}
+
+export async function updateProject(id: string, title: string, summary: string): Promise<Project> {
+  return apiFetch<Project>(`/api/projects/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title, summary, role: USER_ROLES.MANAGER }),
+  });
+}
+
+export async function updateProjectDocs(id: string, documentation: string): Promise<Project> {
+  return apiFetch<Project>(`/api/projects/${id}/docs`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ documentation, role: USER_ROLES.MANAGER }),
+  });
+}
+
 // -- Features --
 
-export async function getFeatures(): Promise<Feature[]> {
-  return apiFetch<Feature[]>('/api/features');
+export async function getFeatures(projectId?: string): Promise<Feature[]> {
+  const url = projectId ? `/api/features?project_id=${projectId}` : '/api/features';
+  return apiFetch<Feature[]>(url);
 }
 
 export async function updateFeature(id: string, title: string, summary: string): Promise<Feature> {

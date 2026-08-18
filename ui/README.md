@@ -1,32 +1,40 @@
-# React + TypeScript + Vite
+# Ticket Manager UI (React + Vite + TailwindCSS)
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+A responsive, local-first web interface for the Ticket Manager MCP system. Provides a visual Kanban board, project documentation editor, and hierarchical navigation across projects, features, and subfeatures.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Projects Dashboard (`/` / `/projects`)**: Overview of all active projects with metadata, status badges, and project creation modal.
+- **Project View (`/projects/:projectId`)**: View project details, embedded Markdown documentation viewer/editor, and features breakdown.
+- **Feature View (`/features/:featureId`)**: Manage feature epics, list child subfeatures, create subfeatures, and view unassigned tickets.
+- **Subfeature Kanban Board (`/subfeatures/:subfeatureId`)**: Interactive Kanban board with columns (`BACKLOG`, `READY`, `IN_PROGRESS`, `IN_REVIEW`, `DONE`), drag/click status progression, and role validation.
+- **Ticket Modal**: Comprehensive ticket details with markdown context rendering, acceptance criteria, interactive task checklists, timestamped activity notes, and role-enforced status transitions.
 
-## React Compiler
+## Commands
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```bash
+# Install dependencies
+npm install
 
-## Expanding the Oxlint configuration
+# Run Vite dev server with Hot Module Replacement (HMR)
+npm run dev
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+# Run TypeScript check and production build
+npm run build
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+# Run Oxlint linter
+npm run lint
+
+# Preview production build
+npm run preview
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+## Architecture
+
+- **Framework**: React 19 + TypeScript
+- **Bundler**: Vite 8 with `@vitejs/plugin-react`
+- **Styling**: TailwindCSS 4 + Class Variance Authority (`cva`) + `clsx` + `tailwind-merge`
+- **Components & Icons**: Radix UI Dialog / Dropdown Menu primitives + Lucide React icons
+- **Animations**: Framer Motion
+- **Routing**: React Router DOM 7
+- **Markdown**: React Markdown
